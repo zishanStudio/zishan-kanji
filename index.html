@@ -199,6 +199,14 @@
               </div>
               <span class="text-slate-400 text-sm">›</span>
             </button>
+            <button data-drawer-action="customsets" class="drawer-item w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-slate-50 text-left transition">
+              <span class="w-9 h-9 rounded-full bg-amber-600 text-white flex items-center justify-center font-bold text-sm shrink-0">≡</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-bold text-slate-900">Custom Sets</div>
+                <div id="drawerCustomSetsSub" class="text-[11px] text-slate-500">Doubt List &amp; My Folders</div>
+              </div>
+              <span class="text-slate-400 text-sm">›</span>
+            </button>
             <button data-drawer-action="Hiragana" class="drawer-item w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-slate-50 text-left transition">
               <span class="w-9 h-9 rounded-full bg-rose-500 text-white flex items-center justify-center kanji-font font-bold text-sm shrink-0">あ</span>
               <div class="min-w-0 flex-1">
@@ -290,6 +298,44 @@
 
 
 
+
+
+  <!-- Add Character to Custom Set / Doubt List Modal (v3.5) -->
+  <div id="addToSetModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-sm overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span id="addToSetCharBadge" class="kanji-font text-xl font-black text-indigo-600">漢</span>
+          <span class="text-sm font-bold text-slate-900">Add to Custom Set</span>
+        </div>
+        <button id="addToSetCloseBtn" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center text-sm font-bold">✕</button>
+      </div>
+      <div class="p-4 space-y-3">
+        <div id="addToSetList" class="space-y-2 max-h-56 overflow-y-auto"></div>
+        <div class="border-t border-slate-100 pt-3 flex items-center gap-2">
+          <input id="quickNewSetInput" type="text" placeholder="New folder (e.g. Lesson 1)" class="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+          <button id="quickNewSetBtn" class="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shrink-0 transition">+ Create</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Add Kanji into a Custom Set Modal (v3.5) -->
+  <div id="pickKanjiForSetModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <div id="pickKanjiSetTitle" class="text-sm font-bold text-slate-900">Add Characters</div>
+          <div class="text-[11px] text-slate-500">Tap any character to add or remove</div>
+        </div>
+        <button id="pickKanjiCloseBtn" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center text-sm font-bold">✕</button>
+      </div>
+      <div class="p-4 space-y-3">
+        <input id="pickKanjiSearchInput" type="text" placeholder="Search kanji, kana, meaning, or reading..." class="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+        <div id="pickKanjiResults" class="grid grid-cols-5 gap-1.5 max-h-64 overflow-y-auto"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Main Content -->
   <main id="mainContent" class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4">
@@ -436,6 +482,29 @@
       </div>
 
       <div id="radicalsContainer" class="space-y-4"></div>
+    </section>
+
+
+    <!-- CUSTOM SETS & DOUBT LIST VIEW (v3.5) -->
+    <section id="view-customsets" class="hidden space-y-4">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <button id="customSetsDrawerBtn" class="w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm flex items-center justify-center font-bold text-base shrink-0" title="Menu">☰</button>
+          <div class="min-w-0">
+            <h2 class="text-base sm:text-lg font-bold text-slate-900 truncate">Custom Sets &amp; Doubt List</h2>
+            <p class="text-xs text-slate-500">Create your own study folders · Cloud Synced</p>
+          </div>
+        </div>
+        <button id="customSetsBackHomeBtn" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition shrink-0">← Home</button>
+      </div>
+
+      <!-- Create New Custom Set Bar -->
+      <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2">
+        <input id="newCustomSetNameInput" type="text" placeholder="New set name (e.g. Minna Lesson 1, Exam Prep)..." class="flex-1 px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+        <button id="createCustomSetBtn" class="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm shrink-0 transition">+ New Set</button>
+      </div>
+
+      <div id="customSetsList" class="space-y-3"></div>
     </section>
 
     <!-- MODE 1: LEVEL / KANA SETS VIEW -->
@@ -737,10 +806,15 @@
               </div>
               <div class="space-y-2 flex-1">
                 <div id="modalMeaning" class="text-base font-bold text-slate-900 leading-snug">day, sun, Japan</div>
-                <button id="modalSpeakBtn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
-                  Pronounce
-                </button>
+                <div class="flex items-center flex-wrap gap-2">
+                  <button id="modalSpeakBtn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                    Pronounce
+                  </button>
+                  <button id="modalAddToSetBtn" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold hover:bg-amber-100 transition">
+                    📌 + Set
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -836,7 +910,7 @@
   </main>
 
   <footer id="appFooter" class="py-4 pb-20 text-center text-xs text-slate-400 border-t border-slate-200 bg-white mt-6">
-    Kanji Studio (<span class="kanji-font">漢字学習</span>) · <span class="font-semibold text-indigo-500">v3.4</span> · Created by <span class="font-semibold text-slate-700">Zishan</span>
+    Kanji Studio (<span class="kanji-font">漢字学習</span>) · <span class="font-semibold text-indigo-500">v3.5</span> · Created by <span class="font-semibold text-slate-700">Zishan</span>
   </footer>
 
   <!-- Bottom Navigation Bar (Home | Hiragana | Katakana | Kanji) -->
@@ -3533,6 +3607,7 @@
       practiceCounts: {}, // { [char]: { write: number, quiz: number } }
       dailyActivity: {}, // { 'YYYY-MM-DD': count }
       srs: {}, // { [char]: { box, nextReview, wrongCount, hard, lastResult } }
+      customSets: [{ id: "doubt", name: "Doubt List", chars: [], createdAt: 0 }],
       lastBackup: null,
       updatedAt: 0,
       selectedKanji: null,
@@ -3583,6 +3658,12 @@
           if (parsed.practiceCounts) state.practiceCounts = parsed.practiceCounts;
           if (parsed.dailyActivity) state.dailyActivity = parsed.dailyActivity;
           if (parsed.srs && typeof parsed.srs === "object") state.srs = parsed.srs;
+          if (Array.isArray(parsed.customSets) && parsed.customSets.length) {
+            state.customSets = parsed.customSets;
+            if (!state.customSets.some(s => s.id === "doubt")) {
+              state.customSets.unshift({ id: "doubt", name: "Doubt List", chars: [], createdAt: 0 });
+            }
+          }
           if (parsed.lastBackup) state.lastBackup = parsed.lastBackup;
           if (typeof parsed.updatedAt === "number") state.updatedAt = parsed.updatedAt;
           if (parsed.lastStudiedSet) state.lastStudiedSet = parsed.lastStudiedSet;
@@ -3606,6 +3687,7 @@
           practiceCounts: state.practiceCounts,
           dailyActivity: state.dailyActivity,
           srs: state.srs,
+          customSets: state.customSets,
           lastBackup: state.lastBackup,
           updatedAt: state.updatedAt,
           lastStudiedSet: state.lastStudiedSet,
@@ -4431,7 +4513,7 @@
     }
 
     function renderModeTabs() {
-      ["home", "kanji-folders", "radicals", "browse", "setview", "detail", "flashcards", "quiz", "writing"].forEach(m => {
+      ["home", "kanji-folders", "radicals", "customsets", "browse", "setview", "detail", "flashcards", "quiz", "writing"].forEach(m => {
         const sec = document.getElementById(`view-${m}`);
         if (sec) sec.classList.add("hidden");
       });
@@ -4460,6 +4542,8 @@
         document.getElementById("view-home").classList.remove("hidden");
       } else if (state.activeTab === "radicals") {
         document.getElementById("view-radicals").classList.remove("hidden");
+      } else if (state.activeTab === "customsets") {
+        document.getElementById("view-customsets").classList.remove("hidden");
       } else if (state.activeTab === "kanji" && !state.activeKanjiLevel) {
         document.getElementById("view-kanji-folders").classList.remove("hidden");
       } else {
@@ -4641,6 +4725,7 @@
       if (state.activeMode === "browse") {
         if (state.activeTab === "home") renderHomePage();
         else if (state.activeTab === "radicals" && typeof window.renderRadicalsView === "function") window.renderRadicalsView();
+        else if (state.activeTab === "customsets" && typeof window.renderCustomSetsView === "function") window.renderCustomSetsView();
         else if (state.activeTab === "kanji" && !state.activeKanjiLevel) renderKanjiFolders();
         else renderBrowse();
       } else if (state.activeMode === "setview") {
@@ -6134,6 +6219,7 @@
               practiceCounts: state.practiceCounts || {},
               dailyActivity: state.dailyActivity || {},
               srs: state.srs || {},
+              customSets: state.customSets || [],
               lastStudiedSet: state.lastStudiedSet || null,
               activeLevel: state.activeLevel || "N5",
               updatedAt: state.updatedAt || Date.now()
@@ -6217,6 +6303,27 @@
                   changed = true;
                 }
               }
+            }
+            if (Array.isArray(cloud.customSets) && cloud.customSets.length) {
+              const byId = {};
+              state.customSets.forEach(s => { byId[s.id] = s; });
+              cloud.customSets.forEach(cs => {
+                if (!cs || !cs.id || !cs.name) return;
+                if (!byId[cs.id]) {
+                  const copy = { id: cs.id, name: cs.name, chars: Array.isArray(cs.chars) ? [...new Set(cs.chars)] : [], createdAt: cs.createdAt || Date.now() };
+                  state.customSets.push(copy);
+                  byId[cs.id] = copy;
+                  changed = true;
+                } else {
+                  const curSet = new Set(byId[cs.id].chars || []);
+                  const before = curSet.size;
+                  (cs.chars || []).forEach(c => curSet.add(c));
+                  if (curSet.size > before) {
+                    byId[cs.id].chars = Array.from(curSet);
+                    changed = true;
+                  }
+                }
+              });
             }
             if (!state.lastStudiedSet && cloud.lastStudiedSet) {
               state.lastStudiedSet = cloud.lastStudiedSet;
@@ -6519,7 +6626,7 @@
         }
 
         // 1. Close open utility modals first
-        const modalIds = ["radicalDetailModal", "wcPausedModal", "quizPausedModal", "unlockAllModal", "resetConfirmModal", "usersAdminModal", "searchOverlayModal", "studyPickerModal"];
+        const modalIds = ["addToSetModal", "pickKanjiForSetModal", "radicalDetailModal", "wcPausedModal", "quizPausedModal", "unlockAllModal", "resetConfirmModal", "usersAdminModal", "searchOverlayModal", "studyPickerModal"];
         for (const mid of modalIds) {
           const el = document.getElementById(mid);
           if (el && !el.classList.contains("hidden")) {
@@ -6661,6 +6768,8 @@
           state.activeMode = "browse";
           if (act === "radicals") {
             state.activeTab = "radicals";
+          } else if (act === "customsets") {
+            state.activeTab = "customsets";
           } else if (act === "home") {
             state.activeTab = "home";
           } else if (act === "kanji-folders") {
@@ -6879,6 +6988,253 @@
         radClearBtn.classList.add("hidden");
         renderRadicalsView();
       });
+
+
+      // =========================================================================
+      // CUSTOM SETS & DOUBT LIST (v3.5)
+      // =========================================================================
+      const addToSetModal = document.getElementById("addToSetModal");
+      const pickKanjiModal = document.getElementById("pickKanjiForSetModal");
+      let activeAddChar = null;
+      let activePickSetId = null;
+
+      function ensureDoubtSet() {
+        if (!Array.isArray(state.customSets)) state.customSets = [];
+        if (!state.customSets.some(s => s.id === "doubt")) {
+          state.customSets.unshift({ id: "doubt", name: "Doubt List", chars: [], createdAt: 0 });
+        }
+      }
+
+      function updateDrawerCustomSetsSub() {
+        ensureDoubtSet();
+        const el = document.getElementById("drawerCustomSetsSub");
+        if (!el) return;
+        const totalChars = state.customSets.reduce((acc, s) => acc + (s.chars ? s.chars.length : 0), 0);
+        el.textContent = `${state.customSets.length} Sets · ${totalChars} saved`;
+      }
+
+      function createCustomSetByName(rawName, initialChar) {
+        ensureDoubtSet();
+        const name = (rawName || "").trim();
+        if (!name) {
+          showToast("Enter a folder name first.");
+          return null;
+        }
+        const newSet = {
+          id: "cs_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+          name,
+          chars: initialChar ? [initialChar] : [],
+          createdAt: Date.now()
+        };
+        state.customSets.push(newSet);
+        saveState();
+        updateDrawerCustomSetsSub();
+        return newSet;
+      }
+
+      function toggleCharInCustomSet(setId, ch) {
+        ensureDoubtSet();
+        const s = state.customSets.find(x => x.id === setId);
+        if (!s) return false;
+        if (!Array.isArray(s.chars)) s.chars = [];
+        const idx = s.chars.indexOf(ch);
+        let added = false;
+        if (idx >= 0) {
+          s.chars.splice(idx, 1);
+        } else {
+          s.chars.push(ch);
+          added = true;
+        }
+        saveState();
+        updateDrawerCustomSetsSub();
+        return added;
+      }
+
+      function openAddToSetModal(ch) {
+        ensureDoubtSet();
+        activeAddChar = ch;
+        document.getElementById("addToSetCharBadge").textContent = ch;
+        renderAddToSetList();
+        pushUserNav();
+        addToSetModal.classList.remove("hidden");
+      }
+
+      function renderAddToSetList() {
+        const listEl = document.getElementById("addToSetList");
+        if (!listEl || !activeAddChar) return;
+        listEl.innerHTML = "";
+        state.customSets.forEach(s => {
+          const has = (s.chars || []).includes(activeAddChar);
+          const row = document.createElement("button");
+          row.className = `w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-left transition ${
+            has ? "bg-amber-50 border-amber-300 text-amber-900" : "bg-slate-50 border-slate-200 text-slate-700 hover:border-amber-300"
+          }`;
+          row.innerHTML = `
+            <div class="min-w-0 flex-1">
+              <div class="text-xs font-bold truncate">${s.id === "doubt" ? "📌 " : "📁 "}${s.name}</div>
+              <div class="text-[10px] text-slate-500">${(s.chars || []).length} characters</div>
+            </div>
+            <span class="text-xs font-extrabold px-2 py-0.5 rounded-lg ${has ? "bg-amber-600 text-white" : "bg-white border border-slate-200 text-slate-500"}">${has ? "✓ Added" : "+ Add"}</span>
+          `;
+          row.addEventListener("click", () => {
+            const added = toggleCharInCustomSet(s.id, activeAddChar);
+            renderAddToSetList();
+            if (state.activeTab === "customsets") renderCustomSetsView();
+            showToast(added ? `Added ${activeAddChar} to ${s.name}` : `Removed ${activeAddChar} from ${s.name}`);
+          });
+          listEl.appendChild(row);
+        });
+      }
+
+      document.getElementById("modalAddToSetBtn").addEventListener("click", () => {
+        if (state.selectedKanji) openAddToSetModal(state.selectedKanji);
+      });
+      document.getElementById("addToSetCloseBtn").addEventListener("click", () => addToSetModal.classList.add("hidden"));
+      addToSetModal.addEventListener("click", (e) => {
+        if (e.target.id === "addToSetModal") addToSetModal.classList.add("hidden");
+      });
+      document.getElementById("quickNewSetBtn").addEventListener("click", () => {
+        const inp = document.getElementById("quickNewSetInput");
+        const created = createCustomSetByName(inp.value, activeAddChar);
+        if (created) {
+          inp.value = "";
+          renderAddToSetList();
+          showToast(`Created "${created.name}" & added ${activeAddChar}!`);
+        }
+      });
+
+      function openPickKanjiForSet(setId) {
+        ensureDoubtSet();
+        activePickSetId = setId;
+        const s = state.customSets.find(x => x.id === setId);
+        if (!s) return;
+        document.getElementById("pickKanjiSetTitle").textContent = `Add to "${s.name}"`;
+        const inp = document.getElementById("pickKanjiSearchInput");
+        inp.value = "";
+        renderPickKanjiResults("");
+        pushUserNav();
+        pickKanjiModal.classList.remove("hidden");
+        setTimeout(() => inp.focus(), 50);
+      }
+
+      function renderPickKanjiResults(query) {
+        const grid = document.getElementById("pickKanjiResults");
+        const s = state.customSets.find(x => x.id === activePickSetId);
+        if (!grid || !s) return;
+        const q = (query || "").trim().toLowerCase();
+        const matches = ALL_KANJI.filter(k => {
+          if (!q) return k.level === "N5" || k.level === "N4";
+          const hay = `${k.char} ${k.on} ${k.kun} ${k.meaning} ${k.level}`.toLowerCase();
+          return hay.includes(q);
+        }).slice(0, 60);
+        grid.innerHTML = "";
+        matches.forEach(k => {
+          const has = (s.chars || []).includes(k.char);
+          const btn = document.createElement("button");
+          btn.className = `flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition ${
+            has ? "bg-amber-50 border-amber-400 text-amber-900" : "bg-slate-50 border-slate-200 hover:border-amber-300 text-slate-900"
+          }`;
+          btn.innerHTML = `<span class="kanji-font text-xl font-bold leading-tight">${k.char}</span><span class="text-[9px] font-bold ${has ? "text-amber-700" : "text-slate-400"}">${has ? "✓" : k.level}</span>`;
+          btn.addEventListener("click", () => {
+            toggleCharInCustomSet(s.id, k.char);
+            renderPickKanjiResults(document.getElementById("pickKanjiSearchInput").value);
+            renderCustomSetsView();
+          });
+          grid.appendChild(btn);
+        });
+      }
+
+      document.getElementById("pickKanjiSearchInput").addEventListener("input", (e) => {
+        renderPickKanjiResults(e.target.value);
+      });
+      document.getElementById("pickKanjiCloseBtn").addEventListener("click", () => pickKanjiModal.classList.add("hidden"));
+      pickKanjiModal.addEventListener("click", (e) => {
+        if (e.target.id === "pickKanjiForSetModal") pickKanjiModal.classList.add("hidden");
+      });
+
+      window.renderCustomSetsView = renderCustomSetsView;
+      function renderCustomSetsView() {
+        ensureDoubtSet();
+        updateDrawerCustomSetsSub();
+        const container = document.getElementById("customSetsList");
+        if (!container) return;
+        container.innerHTML = "";
+
+        state.customSets.forEach(s => {
+          const chars = (s.chars || []).filter(ch => !!KANJI_MAP[ch]);
+          const card = document.createElement("div");
+          card.className = "bg-white rounded-3xl border border-slate-200 p-4 shadow-sm space-y-3";
+          card.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <h3 class="text-sm sm:text-base font-bold text-slate-900 truncate">${s.id === "doubt" ? "📌 " : "📁 "}${s.name}</h3>
+                <p class="text-[11px] text-slate-500">${chars.length} ${chars.length === 1 ? "character" : "characters"}</p>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button data-cs-add="${s.id}" class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition">+ Add</button>
+                <button data-cs-study="${s.id}" class="px-3 py-1.5 rounded-xl ${chars.length ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm" : "bg-slate-200 text-slate-400 cursor-not-allowed"} text-xs font-bold transition" ${chars.length ? "" : "disabled"}>Study →</button>
+                ${s.id !== "doubt" ? `<button data-cs-del="${s.id}" class="w-8 h-8 rounded-xl border border-slate-200 text-rose-500 hover:bg-rose-50 flex items-center justify-center text-xs font-bold transition" title="Delete Set">🗑️</button>` : ""}
+              </div>
+            </div>
+            <div class="cs-chars-wrap flex flex-wrap gap-1.5"></div>
+          `;
+
+          const wrap = card.querySelector(".cs-chars-wrap");
+          if (!chars.length) {
+            wrap.innerHTML = `<span class="text-xs text-slate-400 italic">Empty — tap "+ Add" or open any Kanji and tap "📌 + Set".</span>`;
+          } else {
+            chars.forEach(ch => {
+              const chip = document.createElement("div");
+              chip.className = "inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-800";
+              chip.innerHTML = `<button class="cs-open-ch kanji-font text-base font-bold hover:text-indigo-600">${ch}</button><button class="cs-rem-ch text-[11px] text-slate-400 hover:text-rose-500 px-0.5 font-bold" title="Remove">×</button>`;
+              chip.querySelector(".cs-open-ch").addEventListener("click", () => {
+                state.detailReturnMode = "browse";
+                openKanjiModal(ch);
+              });
+              chip.querySelector(".cs-rem-ch").addEventListener("click", () => {
+                toggleCharInCustomSet(s.id, ch);
+                renderCustomSetsView();
+              });
+              wrap.appendChild(chip);
+            });
+          }
+
+          card.querySelector(`[data-cs-add="${s.id}"]`).addEventListener("click", () => openPickKanjiForSet(s.id));
+          card.querySelector(`[data-cs-study="${s.id}"]`).addEventListener("click", () => {
+            if (!chars.length) return;
+            openStudyPicker(`${s.name} (${chars.length})`, chars, `cs_${s.id}`);
+          });
+          const delBtn = card.querySelector(`[data-cs-del="${s.id}"]`);
+          if (delBtn) {
+            delBtn.addEventListener("click", () => {
+              state.customSets = state.customSets.filter(x => x.id !== s.id);
+              saveState();
+              renderCustomSetsView();
+              showToast(`Deleted "${s.name}"`);
+            });
+          }
+          container.appendChild(card);
+        });
+      }
+
+      document.getElementById("customSetsDrawerBtn").addEventListener("click", openLeftDrawer);
+      document.getElementById("customSetsBackHomeBtn").addEventListener("click", () => {
+        pushUserNav();
+        state.activeTab = "home";
+        state.activeMode = "browse";
+        saveState();
+        renderActiveView();
+      });
+      document.getElementById("createCustomSetBtn").addEventListener("click", () => {
+        const inp = document.getElementById("newCustomSetNameInput");
+        const created = createCustomSetByName(inp.value, null);
+        if (created) {
+          inp.value = "";
+          renderCustomSetsView();
+          showToast(`Created folder "${created.name}"!`);
+        }
+      });
+      updateDrawerCustomSetsSub();
 
       // Initial render
       renderGlobalProgress();
