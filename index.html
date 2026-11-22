@@ -351,20 +351,21 @@
         <button data-jump="kanji" class="home-jump-btn bg-white rounded-2xl border border-slate-200 p-3.5 text-left hover:border-indigo-300 shadow-sm transition">
           <div class="kanji-font text-2xl font-bold text-indigo-600">漢</div>
           <div class="text-xs font-bold text-slate-900 mt-1">Kanji N5–N1</div>
-          <div id="homeKanjiCount" class="text-[11px] text-slate-500">0 / 480</div>
+          <div id="homeKanjiCount" class="text-[11px] text-slate-500">0 / 2137</div>
         </button>
       </div>
 
       <!-- Backup Info Card -->
       <div class="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500">Backup Info</h4>
+          <div class="flex items-center gap-2 flex-wrap"><h4 class="text-xs font-bold uppercase tracking-wider text-slate-500">Backup &amp; Cloud Sync</h4><span id="cloudSyncBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">☁️ Connecting…</span></div>
           <p class="text-xs text-slate-600 mt-0.5">
             Total Study Time: <span id="totalStudyTimeText" class="font-bold text-slate-900">0s</span>
             &nbsp;·&nbsp; Last Backup: <span id="lastBackupText" class="font-semibold text-slate-700">Never</span>
           </p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center flex-wrap gap-2">
+          <button id="syncCloudNowBtn" class="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold text-emerald-700 transition">☁️ Sync Now</button>
           <button id="exportBackupBtn" class="px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition">
             Export Backup
           </button>
@@ -816,7 +817,7 @@
   </main>
 
   <footer id="appFooter" class="py-4 pb-20 text-center text-xs text-slate-400 border-t border-slate-200 bg-white mt-6">
-    Kanji Studio (<span class="kanji-font">漢字学習</span>) · <span class="font-semibold text-indigo-500">v3.1</span> · Created by <span class="font-semibold text-slate-700">Zishan</span>
+    Kanji Studio (<span class="kanji-font">漢字学習</span>) · <span class="font-semibold text-indigo-500">v3.2</span> · Created by <span class="font-semibold text-slate-700">Zishan</span>
   </footer>
 
   <!-- Bottom Navigation Bar (Home | Hiragana | Katakana | Kanji) -->
@@ -3496,6 +3497,7 @@
       practiceCounts: {}, // { [char]: { write: number, quiz: number } }
       dailyActivity: {}, // { 'YYYY-MM-DD': count }
       lastBackup: null,
+      updatedAt: 0,
       selectedKanji: null,
       detailReturnMode: 'browse',
       lastStudiedSet: null,
@@ -3544,13 +3546,15 @@
           if (parsed.practiceCounts) state.practiceCounts = parsed.practiceCounts;
           if (parsed.dailyActivity) state.dailyActivity = parsed.dailyActivity;
           if (parsed.lastBackup) state.lastBackup = parsed.lastBackup;
+          if (typeof parsed.updatedAt === "number") state.updatedAt = parsed.updatedAt;
           if (parsed.lastStudiedSet) state.lastStudiedSet = parsed.lastStudiedSet;
           if (parsed.activeLevel && LEVELS.includes(parsed.activeLevel)) state.activeLevel = parsed.activeLevel;
         }
       } catch (e) {}
     }
 
-    function saveState() {
+    function saveState(skipCloud) {
+      state.updatedAt = Date.now();
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           darkMode: state.darkMode,
@@ -3564,10 +3568,14 @@
           practiceCounts: state.practiceCounts,
           dailyActivity: state.dailyActivity,
           lastBackup: state.lastBackup,
+          updatedAt: state.updatedAt,
           lastStudiedSet: state.lastStudiedSet,
           activeLevel: state.activeLevel
         }));
       } catch (e) {}
+      if (!skipCloud && typeof window.scheduleCloudSync === "function") {
+        window.scheduleCloudSync();
+      }
     }
 
     function applyTheme() {
@@ -5922,19 +5930,165 @@
           fbDb = firebase.firestore();
 
           let userDocUnsub = null;
+          let activeCloudUid = null;
+          let cloudSyncTimer = null;
+          let cloudSyncInFlight = false;
+
+          function setCloudSyncBadge(status, label) {
+            const badge = document.getElementById("cloudSyncBadge");
+            if (!badge) return;
+            badge.textContent = label;
+            if (status === "synced") {
+              badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700";
+            } else if (status === "syncing") {
+              badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700";
+            } else {
+              badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500";
+            }
+          }
+
+          function buildCloudPayload() {
+            return {
+              darkMode: state.darkMode,
+              soundEnabled: state.soundEnabled,
+              progress: state.progress || {},
+              favorites: state.favorites || {},
+              setStats: state.setStats || {},
+              writingStats: state.writingStats || {},
+              practiceCounts: state.practiceCounts || {},
+              dailyActivity: state.dailyActivity || {},
+              lastStudiedSet: state.lastStudiedSet || null,
+              activeLevel: state.activeLevel || "N5",
+              updatedAt: state.updatedAt || Date.now()
+            };
+          }
+
+          function mergeCloudIntoLocal(cloud) {
+            if (!cloud || typeof cloud !== "object") return false;
+            const rank = { unseen: 0, new: 1, seen: 2, known: 3 };
+            let changed = false;
+
+            if (cloud.progress && typeof cloud.progress === "object") {
+              for (const [ch, cValRaw] of Object.entries(cloud.progress)) {
+                const cVal = cValRaw === "learning" ? "new" : (cValRaw === "mastered" ? "known" : cValRaw);
+                const lVal = state.progress[ch] || "unseen";
+                if ((rank[cVal] || 0) > (rank[lVal] || 0)) {
+                  state.progress[ch] = cVal;
+                  changed = true;
+                }
+              }
+            }
+            if (cloud.favorites && typeof cloud.favorites === "object") {
+              for (const [ch, fav] of Object.entries(cloud.favorites)) {
+                if (fav && !state.favorites[ch]) {
+                  state.favorites[ch] = true;
+                  changed = true;
+                }
+              }
+            }
+            if (cloud.dailyActivity && typeof cloud.dailyActivity === "object") {
+              for (const [day, cnt] of Object.entries(cloud.dailyActivity)) {
+                if ((cnt || 0) > (state.dailyActivity[day] || 0)) {
+                  state.dailyActivity[day] = cnt;
+                  changed = true;
+                }
+              }
+            }
+            if (cloud.practiceCounts && typeof cloud.practiceCounts === "object") {
+              for (const [ch, obj] of Object.entries(cloud.practiceCounts)) {
+                const cur = state.practiceCounts[ch] || { write: 0, quiz: 0 };
+                const nw = Math.max(cur.write || 0, (obj && obj.write) || 0);
+                const nq = Math.max(cur.quiz || 0, (obj && obj.quiz) || 0);
+                if (nw !== cur.write || nq !== cur.quiz) {
+                  state.practiceCounts[ch] = { write: nw, quiz: nq };
+                  changed = true;
+                }
+              }
+            }
+            if (cloud.setStats && typeof cloud.setStats === "object") {
+              for (const [k, obj] of Object.entries(cloud.setStats)) {
+                const cur = state.setStats[k] || { seconds: 0, lastStudied: 0 };
+                const ns = Math.max(cur.seconds || 0, (obj && obj.seconds) || 0);
+                const nl = Math.max(cur.lastStudied || 0, (obj && obj.lastStudied) || 0);
+                if (ns !== cur.seconds || nl !== cur.lastStudied) {
+                  state.setStats[k] = { seconds: ns, lastStudied: nl };
+                  changed = true;
+                }
+              }
+            }
+            if (cloud.writingStats && typeof cloud.writingStats === "object") {
+              for (const [k, obj] of Object.entries(cloud.writingStats)) {
+                const cur = state.writingStats[k];
+                if (!cur || ((obj && obj.writings) || 0) > (cur.writings || 0)) {
+                  state.writingStats[k] = obj;
+                  changed = true;
+                }
+              }
+            }
+            if (!state.lastStudiedSet && cloud.lastStudiedSet) {
+              state.lastStudiedSet = cloud.lastStudiedSet;
+              changed = true;
+            }
+            return changed;
+          }
+
+          async function pushCloudState(manual) {
+            if (!fbDb || !activeCloudUid || cloudSyncInFlight) return;
+            if (!navigator.onLine) {
+              setCloudSyncBadge("offline", "☁️ Offline (Saved Locally)");
+              if (manual) showToast("Offline — progress saved locally on device.");
+              return;
+            }
+            cloudSyncInFlight = true;
+            setCloudSyncBadge("syncing", "☁️ Syncing…");
+            try {
+              const docRef = fbDb.collection("users").doc(activeCloudUid);
+              const payload = buildCloudPayload();
+              await docRef.set({
+                cloudState: payload,
+                cloudUpdatedAt: Date.now(),
+                lastActive: firebase.firestore.FieldValue.serverTimestamp()
+              }, { merge: true });
+              const t = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              setCloudSyncBadge("synced", `☁️ Synced · ${t}`);
+              if (manual) showToast("☁️ Cloud backup synced!");
+            } catch (e) {
+              setCloudSyncBadge("offline", "☁️ Sync Pending");
+              if (manual) showToast("Sync failed — check internet connection.");
+            } finally {
+              cloudSyncInFlight = false;
+            }
+          }
+
+          window.scheduleCloudSync = function() {
+            if (!fbDb || !activeCloudUid) return;
+            if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
+            setCloudSyncBadge("syncing", "☁️ Saving…");
+            cloudSyncTimer = setTimeout(() => pushCloudState(false), 1500);
+          };
+
+          const syncNowBtn = document.getElementById("syncCloudNowBtn");
+          if (syncNowBtn) {
+            syncNowBtn.addEventListener("click", () => pushCloudState(true));
+          }
+
           fbAuth.onAuthStateChanged(async (user) => {
             const signOutBtn = document.getElementById("signOutMenuBtn");
             if (userDocUnsub) { userDocUnsub(); userDocUnsub = null; }
             if (!user) {
+              activeCloudUid = null;
+              setCloudSyncBadge("offline", "☁️ Sign in to sync");
               if (signOutBtn) signOutBtn.classList.add("hidden");
               authModal.classList.remove("hidden");
               return;
             }
+            activeCloudUid = user.uid;
             try {
               const docRef = fbDb.collection("users").doc(user.uid);
               const snap = await docRef.get();
               const data = snap.exists ? snap.data() : {};
               if (data.blocked) {
+                activeCloudUid = null;
                 await fbAuth.signOut();
                 showAuthError("Your access has been removed by the Designer.");
                 authModal.classList.remove("hidden");
@@ -5949,6 +6103,19 @@
                 lastActive: firebase.firestore.FieldValue.serverTimestamp(),
                 createdAt: data.createdAt || firebase.firestore.FieldValue.serverTimestamp()
               }, { merge: true });
+
+              // Restore / merge cloud progress seamlessly
+              if (data.cloudState) {
+                const restored = mergeCloudIntoLocal(data.cloudState);
+                if (restored) {
+                  saveState(true);
+                  renderGlobalProgress();
+                  renderActiveView();
+                  showToast("☁️ Progress restored from Cloud!");
+                }
+              }
+              // Push current merged state so cloud is always up to date
+              pushCloudState(false);
 
               // Real-time listener: if Designer taps Unlock VIP / Lock VIP / Remove, update this user IMMEDIATELY!
               userDocUnsub = docRef.onSnapshot(async (liveSnap) => {
