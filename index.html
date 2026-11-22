@@ -329,9 +329,14 @@
             <div class="text-xs font-bold uppercase tracking-wider text-indigo-600">Weekly Study Activity</div>
             <div class="text-xs text-slate-500 mt-0.5" id="reviewSubText">Characters marked Learning appear here for quick review</div>
           </div>
-          <button id="reviewNowBtn" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition">
-            REVIEW (0)
-          </button>
+          <div class="flex items-center gap-2">
+            <button id="reviewHardBtn" class="hidden px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-sm transition">
+              🔥 HARD (0)
+            </button>
+            <button id="reviewNowBtn" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition">
+              REVIEW (0)
+            </button>
+          </div>
         </div>
         <div id="weeklyDaysGrid" class="grid grid-cols-7 gap-1.5 text-center"></div>
       </div>
@@ -817,7 +822,7 @@
   </main>
 
   <footer id="appFooter" class="py-4 pb-20 text-center text-xs text-slate-400 border-t border-slate-200 bg-white mt-6">
-    Kanji Studio (<span class="kanji-font">漢字学習</span>) · <span class="font-semibold text-indigo-500">v3.2</span> · Created by <span class="font-semibold text-slate-700">Zishan</span>
+    Kanji Studio (<span class="kanji-font">漢字学習</span>) · <span class="font-semibold text-indigo-500">v3.3</span> · Created by <span class="font-semibold text-slate-700">Zishan</span>
   </footer>
 
   <!-- Bottom Navigation Bar (Home | Hiragana | Katakana | Kanji) -->
@@ -3496,6 +3501,7 @@
       writingStats: {}, // { [setKey]: { lastStudied, writings, correctStrokes, wrongStrokes } }
       practiceCounts: {}, // { [char]: { write: number, quiz: number } }
       dailyActivity: {}, // { 'YYYY-MM-DD': count }
+      srs: {}, // { [char]: { box, nextReview, wrongCount, hard, lastResult } }
       lastBackup: null,
       updatedAt: 0,
       selectedKanji: null,
@@ -3545,6 +3551,7 @@
           if (parsed.writingStats) state.writingStats = parsed.writingStats;
           if (parsed.practiceCounts) state.practiceCounts = parsed.practiceCounts;
           if (parsed.dailyActivity) state.dailyActivity = parsed.dailyActivity;
+          if (parsed.srs && typeof parsed.srs === "object") state.srs = parsed.srs;
           if (parsed.lastBackup) state.lastBackup = parsed.lastBackup;
           if (typeof parsed.updatedAt === "number") state.updatedAt = parsed.updatedAt;
           if (parsed.lastStudiedSet) state.lastStudiedSet = parsed.lastStudiedSet;
@@ -3567,6 +3574,7 @@
           writingStats: state.writingStats,
           practiceCounts: state.practiceCounts,
           dailyActivity: state.dailyActivity,
+          srs: state.srs,
           lastBackup: state.lastBackup,
           updatedAt: state.updatedAt,
           lastStudiedSet: state.lastStudiedSet,
@@ -3663,6 +3671,87 @@
     function bumpTodayActivity() {
       const key = getDateKey(new Date());
       state.dailyActivity[key] = (state.dailyActivity[key] || 0) + 1;
+    }
+
+    // =========================================================================
+    // SMART SRS (SPACED REPETITION) & WEAK KANJI QUEUE (v3.3)
+    // =========================================================================
+    const SRS_INTERVALS_MS = [
+      4 * 3600 * 1000,        // Box 0 (Hard / Reset): 4 hours
+      1 * 86400 * 1000,       // Box 1: 1 day
+      3 * 86400 * 1000,       // Box 2: 3 days
+      7 * 86400 * 1000,       // Box 3: 7 days
+      14 * 86400 * 1000,      // Box 4: 14 days
+      30 * 86400 * 1000       // Box 5: 30 days
+    ];
+
+    function recordSrsResult(char, isCorrect) {
+      if (!char) return;
+      const now = Date.now();
+      const cur = state.srs[char] || { box: 0, nextReview: 0, wrongCount: 0, hard: false, lastResult: "ok" };
+      if (isCorrect) {
+        const nextBox = Math.min(SRS_INTERVALS_MS.length - 1, (cur.box || 0) + 1);
+        state.srs[char] = {
+          box: nextBox,
+          nextReview: now + SRS_INTERVALS_MS[nextBox],
+          wrongCount: cur.wrongCount || 0,
+          hard: nextBox >= 2 ? false : !!cur.hard,
+          lastResult: "ok"
+        };
+      } else {
+        state.srs[char] = {
+          box: 0,
+          nextReview: now + SRS_INTERVALS_MS[0],
+          wrongCount: (cur.wrongCount || 0) + 1,
+          hard: true,
+          lastResult: "wrong"
+        };
+      }
+      saveState();
+    }
+
+    function getSmartReviewData() {
+      const now = Date.now();
+      const hardList = [];
+      const dueList = [];
+      const learningFallback = [];
+      const added = new Set();
+
+      // 1. Hard / Weak Kanji first (highest wrongCount first)
+      ALL_KANJI.forEach(k => {
+        const rec = state.srs[k.char];
+        if (rec && rec.hard) {
+          hardList.push(k);
+          added.add(k.char);
+        }
+      });
+      hardList.sort((a, b) => ((state.srs[b.char] && state.srs[b.char].wrongCount) || 0) - ((state.srs[a.char] && state.srs[a.char].wrongCount) || 0));
+
+      // 2. SRS Due items (nextReview <= now)
+      ALL_KANJI.forEach(k => {
+        if (added.has(k.char)) return;
+        const rec = state.srs[k.char];
+        if (rec && rec.nextReview && rec.nextReview <= now) {
+          dueList.push(k);
+          added.add(k.char);
+        }
+      });
+
+      // 3. Learning items ('new' or 'seen') not scheduled in the future
+      ALL_KANJI.forEach(k => {
+        if (added.has(k.char)) return;
+        const st = getStatus(k.char);
+        if (st === "new" || st === "seen") {
+          const rec = state.srs[k.char];
+          if (!rec || !rec.nextReview || rec.nextReview <= now) {
+            learningFallback.push(k);
+            added.add(k.char);
+          }
+        }
+      });
+
+      const queue = [...hardList, ...dueList, ...learningFallback];
+      return { hardList, dueList, learningFallback, queue };
     }
 
     function recordPracticeAndAutoStar(char, type) {
@@ -4608,21 +4697,32 @@
         }
       }
 
-      // Review button count (Learning items in active level, or all levels if 0 in active)
-      const levelLearning = ALL_KANJI.filter(k => (getStatus(k.char) === "new" || getStatus(k.char) === "seen"));
+      // Smart SRS Review & Hard Queue (v3.3)
+      const srsData = getSmartReviewData();
       const reviewBtn = document.getElementById("reviewNowBtn");
+      const hardBtn = document.getElementById("reviewHardBtn");
       const reviewSub = document.getElementById("reviewSubText");
+      if (hardBtn) {
+        hardBtn.classList.toggle("hidden", srsData.hardList.length === 0);
+        hardBtn.textContent = `🔥 HARD (${srsData.hardList.length})`;
+      }
       if (reviewBtn) {
-        reviewBtn.textContent = `REVIEW (${levelLearning.length})`;
-        reviewBtn.disabled = levelLearning.length === 0;
-        reviewBtn.className = levelLearning.length > 0
+        reviewBtn.textContent = `REVIEW (${srsData.queue.length})`;
+        reviewBtn.disabled = srsData.queue.length === 0;
+        reviewBtn.className = srsData.queue.length > 0
           ? "px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition"
           : "px-4 py-2 rounded-xl bg-slate-200 text-slate-400 text-xs font-bold cursor-not-allowed";
       }
       if (reviewSub) {
-        reviewSub.textContent = levelLearning.length > 0
-          ? `${levelLearning.length} characters marked "Learning" ready to review`
-          : `Mark characters as "Learning" to build your review queue`;
+        if (srsData.queue.length > 0) {
+          const parts = [];
+          if (srsData.hardList.length) parts.push(`${srsData.hardList.length} Hard`);
+          if (srsData.dueList.length) parts.push(`${srsData.dueList.length} Due`);
+          if (srsData.learningFallback.length) parts.push(`${srsData.learningFallback.length} Learning`);
+          reviewSub.textContent = `Smart SRS Queue: ${parts.join(" · ")}`;
+        } else {
+          reviewSub.textContent = `All caught up! Practice Quiz or Writing to build your Smart SRS queue`;
+        }
       }
 
       // Backup Info
@@ -5146,14 +5246,16 @@
         sfx.correct();
         state.quizScore++;
         recordPracticeAndAutoStar(q.target.char, "quiz");
+        recordSrsResult(q.target.char, true);
         btnEl.className = "p-3.5 rounded-2xl border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-bold text-sm text-center";
         document.getElementById("quizFeedbackMsg").textContent = "Correct!";
         document.getElementById("quizFeedbackMsg").className = "font-bold text-emerald-700";
       } else {
         sfx.wrong();
         state.quizMissed.push(q.target);
+        recordSrsResult(q.target.char, false);
         btnEl.className = "p-3.5 rounded-2xl border-2 border-rose-500 bg-rose-50 text-rose-900 font-bold text-sm text-center";
-        document.getElementById("quizFeedbackMsg").textContent = `Incorrect — Correct: ${q.target.char}`;
+        document.getElementById("quizFeedbackMsg").textContent = `Incorrect — Correct: ${q.target.char} (Marked Hard for SRS)`;
         document.getElementById("quizFeedbackMsg").className = "font-bold text-rose-700";
       }
 
@@ -5300,6 +5402,9 @@
       state.writingStats[wKey].writings += 1;
       state.writingStats[wKey].lastStudied = Date.now();
       recordPracticeAndAutoStar(k.char, "write");
+      recordSrsResult(k.char, (window._wcCharWrong || 0) < 2 && !(window._wcCharHint));
+      window._wcCharWrong = 0;
+      window._wcCharHint = false;
       bumpTodayActivity();
       saveState();
       clearTimeout(window._wcAutoTimer);
@@ -5327,11 +5432,13 @@
           document.getElementById("wcCorrectCount").textContent = wcCorrect;
         } else if (ev === "wrong") {
           wcWrong++;
+          window._wcCharWrong = (window._wcCharWrong || 0) + 1;
           state.writingStats[wKey].wrongStrokes++;
           state.writingStats[wKey].lastStudied = Date.now();
           document.getElementById("wcWrongCount").textContent = wcWrong;
         } else if (ev === "hint") {
           wcHints++;
+          window._wcCharHint = true;
           document.getElementById("wcHintCount").textContent = wcHints;
         }
         saveState();
@@ -5821,10 +5928,18 @@
 
       // Review Now button
       document.getElementById("reviewNowBtn").addEventListener("click", () => {
-        const learningList = ALL_KANJI.filter(k => (getStatus(k.char) === "new" || getStatus(k.char) === "seen"));
-        if (!learningList.length) return;
-        openStudyPicker(`Review Queue (${learningList.length})`, learningList.map(k => k.char), null);
+        const { queue } = getSmartReviewData();
+        if (!queue.length) return;
+        openStudyPicker(`Smart SRS Review (${queue.length})`, queue.map(k => k.char), null);
       });
+      const revHardBtnEl = document.getElementById("reviewHardBtn");
+      if (revHardBtnEl) {
+        revHardBtnEl.addEventListener("click", () => {
+          const { hardList } = getSmartReviewData();
+          if (!hardList.length) return;
+          openStudyPicker(`🔥 Hard Kanji (${hardList.length})`, hardList.map(k => k.char), null);
+        });
+      }
 
       // Export & Import Backup
       document.getElementById("exportBackupBtn").addEventListener("click", () => {
@@ -5957,6 +6072,7 @@
               writingStats: state.writingStats || {},
               practiceCounts: state.practiceCounts || {},
               dailyActivity: state.dailyActivity || {},
+              srs: state.srs || {},
               lastStudiedSet: state.lastStudiedSet || null,
               activeLevel: state.activeLevel || "N5",
               updatedAt: state.updatedAt || Date.now()
@@ -6021,6 +6137,22 @@
                 const cur = state.writingStats[k];
                 if (!cur || ((obj && obj.writings) || 0) > (cur.writings || 0)) {
                   state.writingStats[k] = obj;
+                  changed = true;
+                }
+              }
+            }
+            if (cloud.srs && typeof cloud.srs === "object") {
+              for (const [ch, cObj] of Object.entries(cloud.srs)) {
+                if (!cObj || typeof cObj !== "object") continue;
+                const lObj = state.srs[ch];
+                if (!lObj || (cObj.nextReview || 0) > (lObj.nextReview || 0) || (cObj.wrongCount || 0) > (lObj.wrongCount || 0)) {
+                  state.srs[ch] = {
+                    box: Math.max((lObj && lObj.box) || 0, cObj.box || 0),
+                    nextReview: Math.max((lObj && lObj.nextReview) || 0, cObj.nextReview || 0),
+                    wrongCount: Math.max((lObj && lObj.wrongCount) || 0, cObj.wrongCount || 0),
+                    hard: !!(cObj.hard || (lObj && lObj.hard)),
+                    lastResult: cObj.lastResult || (lObj && lObj.lastResult) || "ok"
+                  };
                   changed = true;
                 }
               }
