@@ -207,6 +207,14 @@
               </div>
               <span class="text-slate-400 text-sm">›</span>
             </button>
+            <button data-drawer-action="lookalikes" class="drawer-item w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-slate-50 text-left transition">
+              <span class="w-9 h-9 rounded-full bg-sky-600 text-white flex items-center justify-center kanji-font font-bold text-sm shrink-0">似</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-bold text-slate-900">Look-Alike Kanji</div>
+                <div class="text-[11px] text-slate-500">43 Confusing Pairs &amp; Tips</div>
+              </div>
+              <span class="text-slate-400 text-sm">›</span>
+            </button>
             <button data-drawer-action="Hiragana" class="drawer-item w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-slate-50 text-left transition">
               <span class="w-9 h-9 rounded-full bg-rose-500 text-white flex items-center justify-center kanji-font font-bold text-sm shrink-0">あ</span>
               <div class="min-w-0 flex-1">
@@ -505,6 +513,31 @@
       </div>
 
       <div id="customSetsList" class="space-y-3"></div>
+    </section>
+
+
+    <!-- LOOK-ALIKE KANJI COMPARISON VIEW (v3.6) -->
+    <section id="view-lookalikes" class="hidden space-y-4">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <button id="lookalikesDrawerBtn" class="w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm flex items-center justify-center font-bold text-base shrink-0" title="Menu">☰</button>
+          <div class="min-w-0">
+            <h2 class="text-base sm:text-lg font-bold text-slate-900 truncate">Look-Alike Kanji <span class="kanji-font text-sky-600">似ている漢字</span></h2>
+            <p id="lookalikesSubText" class="text-xs text-slate-500">Compare confusing Kanji side-by-side</p>
+          </div>
+        </div>
+        <button id="lookalikesBackHomeBtn" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition shrink-0">← Home</button>
+      </div>
+
+      <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="relative">
+          <input id="lookalikeSearchInput" type="text" placeholder="Search any confusing kanji, meaning, or tip..." class="w-full pl-9 pr-8 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <button id="lookalikeClearSearchBtn" class="hidden absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-sm font-bold">&times;</button>
+        </div>
+      </div>
+
+      <div id="lookalikesContainer" class="space-y-3"></div>
     </section>
 
     <!-- MODE 1: LEVEL / KANA SETS VIEW -->
@@ -836,6 +869,13 @@
               <div id="modalRadicalsList" class="flex flex-wrap gap-1.5"></div>
             </div>
 
+            <!-- Look-Alike Kanji Warning (v3.6) -->
+            <div id="modalLookalikeBox" class="hidden bg-sky-50/70 rounded-2xl p-3 border border-sky-200/80 space-y-2">
+              <div class="text-[11px] font-bold text-sky-700 uppercase tracking-wider">Don't Confuse With (似ている漢字)</div>
+              <div id="modalLookalikeList" class="flex flex-wrap gap-1.5"></div>
+              <div id="modalLookalikeTip" class="text-[11px] text-slate-600 leading-snug"></div>
+            </div>
+
             <!-- 4-Tier Star Status (Unseen=Gray, New=Yellow, Seen=Pink, Known=Red) -->
             <div>
               <div class="text-xs font-semibold text-slate-500 mb-1.5">Study Star Level</div>
@@ -910,7 +950,7 @@
   </main>
 
   <footer id="appFooter" class="py-4 pb-20 text-center text-xs text-slate-400 border-t border-slate-200 bg-white mt-6">
-    Kanji Studio (<span class="kanji-font">漢字学習</span>) · <span class="font-semibold text-indigo-500">v3.5</span> · Created by <span class="font-semibold text-slate-700">Zishan</span>
+    Kanji Studio (<span class="kanji-font">漢字学習</span>) · <span class="font-semibold text-indigo-500">v3.6</span> · Created by <span class="font-semibold text-slate-700">Zishan</span>
   </footer>
 
   <!-- Bottom Navigation Bar (Home | Hiragana | Katakana | Kanji) -->
@@ -3584,6 +3624,16 @@
       });
     });
 
+    // Built-in Look-Alike Kanji Groups (v3.6)
+    const LOOKALIKE_GROUPS = [{"chars":["人","入"],"tip":"人 (person) leans left-to-right from the top; 入 (enter) has the right stroke rising higher on top."},{"chars":["土","士"],"tip":"土 (earth) has a LONGER bottom line; 士 (samurai) has a LONGER top line."},{"chars":["未","末"],"tip":"未 (not yet) has a SHORTER top line; 末 (end) has a LONGER top line."},{"chars":["大","太","犬"],"tip":"大 (big) has no dot; 太 (fat) has a dot underneath; 犬 (dog) has a dot on top-right."},{"chars":["日","目","白","自"],"tip":"日 (sun) has 1 inner bar; 目 (eye) has 2 bars; 白 (white) adds a top tick; 自 (self) has 2 bars + top tick."},{"chars":["待","持","特","時"],"tip":"All share 寺 (temple) on the right: 彳=wait (待), 扌=hold (持), 牛=special (特), 日=time (時)."},{"chars":["間","聞","問"],"tip":"All have 門 (gate): 日 sun inside = interval (間), 耳 ear = hear (聞), 口 mouth = ask (問)."},{"chars":["清","晴","精","静","請"],"tip":"All share 青: 氵=pure (清), 日=sunny (晴), 米=spirit (精), 争=quiet (静), 言=request (請)."},{"chars":["池","地","他"],"tip":"All share 也: 氵=pond (池), 土=ground (地), 亻=other person (他)."},{"chars":["本","体","休"],"tip":"本 (book/root) has a bottom bar; 体 (body) = 亻+本; 休 (rest) = 亻+木 (person by a tree)."},{"chars":["牛","午"],"tip":"牛 (cow) pokes its horn THROUGH the top horizontal bar; 午 (noon) stops cleanly at the bar."},{"chars":["天","夫"],"tip":"天 (heaven) stops at the top bar; 夫 (husband) pokes THROUGH the top bar."},{"chars":["力","刀"],"tip":"力 (power) pokes through the top stroke; 刀 (sword) stays flat on top."},{"chars":["王","玉","主"],"tip":"王 (king) has no dot; 玉 (jewel) has a dot inside; 主 (master) has a dot on top."},{"chars":["千","干"],"tip":"千 (thousand) has a slanted top stroke; 干 (dry) has a flat horizontal top stroke."},{"chars":["右","石"],"tip":"右 (right) starts with the slanted stroke going through; 石 (stone) stays under the flat cliff roof."},{"chars":["左","在"],"tip":"左 (left) has 工 inside; 在 (exist) has 亻+土 inside."},{"chars":["買","売"],"tip":"買 (buy) has a net 罒 over shell/money 貝; 売 (sell) has 士 on top and legs 儿 below."},{"chars":["見","貝"],"tip":"見 (see) has walking legs 儿 at the bottom; 貝 (shell) has two short legs 八."},{"chars":["白","百"],"tip":"白 (white) has no top bar; 百 (hundred) adds a flat 一 bar on top."},{"chars":["母","毎"],"tip":"母 (mother) has no top roof; 毎 (every) adds the slanted 人 roof on top."},{"chars":["妹","姉"],"tip":"Both have 女 (woman): 未 (not yet) = younger sister (妹); 市 (city) = older sister (姉)."},{"chars":["兄","児"],"tip":"兄 (older brother) has 口 on top; 児 (child) has 旧 on top."},{"chars":["鳥","島"],"tip":"鳥 (bird) has 灬 feet at the bottom; 島 (island) replaces the feet with 山 (mountain)."},{"chars":["泳","永","氷"],"tip":"永 (eternity); 氷 (ice) adds a dot on the left; 泳 (swim) adds 氵 water radical."},{"chars":["冷","令"],"tip":"令 (order); 冷 (cold) adds the 冫 ice radical on the left."},{"chars":["快","決"],"tip":"快 (pleasant) uses 忄 heart radical; 決 (decide) uses 氵 water radical."},{"chars":["飲","飯"],"tip":"Both use 食 (food): 欠 (yawn/open mouth) = drink (飲); 反 = meal/rice (飯)."},{"chars":["鉄","銀","銅"],"tip":"All use 金 (metal): 失=iron (鉄), 艮=silver (銀), 同=copper (銅)."},{"chars":["記","紀","起"],"tip":"All share 己: 言=record (記), 糸=era/century (紀), 走=wake up (起)."},{"chars":["友","反"],"tip":"友 (friend) starts with 一 crossing 丿; 反 (opposite) starts with a cliff 厂 roof."},{"chars":["茶","菜"],"tip":"Both have 艹 grass on top: 茶 (tea) has 人+ホ below; 菜 (vegetable) has 采 (claw+tree) below."},{"chars":["官","宮"],"tip":"官 (official) connects the two boxes on the left; 宮 (palace) has two separate 口 boxes connected in the middle."},{"chars":["貸","賃"],"tip":"Both have 貝 (money) below: 代=lend (貸); 任=rent/wages (賃)."},{"chars":["複","腹"],"tip":"複 (duplicate) uses 衤 clothes radical; 腹 (belly) uses 月 flesh/body radical."},{"chars":["受","授"],"tip":"受 (receive) has no left radical; 授 (grant/teach) adds 扌 hand radical."},{"chars":["届","居"],"tip":"Both have 尸 flag: 由 inside = deliver (届); 古 inside = reside (居)."},{"chars":["輸","論"],"tip":"輸 (transport) uses 車 car radical; 論 (theory) uses 言 speech radical."},{"chars":["緑","縁"],"tip":"Both use 糸 thread: 緑 (green) has 水 at bottom-right; 縁 (edge/fate) has 豕 pig at bottom-right."},{"chars":["微","徴"],"tip":"微 (tiny) has 山+一+几 in the middle; 徴 (sign/collect) has 山+王 in the middle."},{"chars":["功","効"],"tip":"Both have 力 (power) on right: 工=achievement (功); 交=effect (効)."},{"chars":["温","湿"],"tip":"Both use 氵 water: 温 (warm) has 日+皿; 湿 (humid) has 日+业."},{"chars":["感","惑"],"tip":"Both have 心 heart below: 感 (feel) has 咸 on top; 惑 (confused) has 或 on top."}];
+    const KANJI_LOOKALIKES = {};
+    LOOKALIKE_GROUPS.forEach((grp, idx) => {
+      grp.chars.forEach(ch => {
+        if (!KANJI_LOOKALIKES[ch]) KANJI_LOOKALIKES[ch] = [];
+        KANJI_LOOKALIKES[ch].push(idx);
+      });
+    });
+
     // =========================================================================
     // STATE & PERSISTENCE
     // =========================================================================
@@ -4513,7 +4563,7 @@
     }
 
     function renderModeTabs() {
-      ["home", "kanji-folders", "radicals", "customsets", "browse", "setview", "detail", "flashcards", "quiz", "writing"].forEach(m => {
+      ["home", "kanji-folders", "radicals", "customsets", "lookalikes", "browse", "setview", "detail", "flashcards", "quiz", "writing"].forEach(m => {
         const sec = document.getElementById(`view-${m}`);
         if (sec) sec.classList.add("hidden");
       });
@@ -4544,6 +4594,8 @@
         document.getElementById("view-radicals").classList.remove("hidden");
       } else if (state.activeTab === "customsets") {
         document.getElementById("view-customsets").classList.remove("hidden");
+      } else if (state.activeTab === "lookalikes") {
+        document.getElementById("view-lookalikes").classList.remove("hidden");
       } else if (state.activeTab === "kanji" && !state.activeKanjiLevel) {
         document.getElementById("view-kanji-folders").classList.remove("hidden");
       } else {
@@ -4726,6 +4778,7 @@
         if (state.activeTab === "home") renderHomePage();
         else if (state.activeTab === "radicals" && typeof window.renderRadicalsView === "function") window.renderRadicalsView();
         else if (state.activeTab === "customsets" && typeof window.renderCustomSetsView === "function") window.renderCustomSetsView();
+        else if (state.activeTab === "lookalikes" && typeof window.renderLookalikesView === "function") window.renderLookalikesView();
         else if (state.activeTab === "kanji" && !state.activeKanjiLevel) renderKanjiFolders();
         else renderBrowse();
       } else if (state.activeMode === "setview") {
@@ -5180,6 +5233,30 @@
           radBox.classList.remove("hidden");
         } else {
           radBox.classList.add("hidden");
+        }
+      }
+
+      // Populate Look-Alike Kanji comparison (v3.6)
+      const laBox = document.getElementById("modalLookalikeBox");
+      const laList = document.getElementById("modalLookalikeList");
+      const laTip = document.getElementById("modalLookalikeTip");
+      if (laBox && laList && laTip) {
+        const gIdxs = !k.isKana ? KANJI_LOOKALIKES[k.char] : null;
+        if (gIdxs && gIdxs.length) {
+          const grp = LOOKALIKE_GROUPS[gIdxs[0]];
+          laList.innerHTML = "";
+          grp.chars.filter(c => c !== k.char).forEach(other => {
+            const ok = KANJI_MAP[other];
+            const btn = document.createElement("button");
+            btn.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-sky-200 hover:border-sky-400 text-xs font-semibold text-slate-800 shadow-2xs transition";
+            btn.innerHTML = `<span class="kanji-font text-base font-black text-sky-700">${other}</span><span class="capitalize">${ok ? ok.meaning.split(",")[0] : ""}</span>`;
+            if (ok) btn.addEventListener("click", () => openKanjiModal(other));
+            laList.appendChild(btn);
+          });
+          laTip.textContent = "💡 " + grp.tip;
+          laBox.classList.remove("hidden");
+        } else {
+          laBox.classList.add("hidden");
         }
       }
       document.getElementById("modalStrokeBadge").textContent = "";
@@ -6770,6 +6847,8 @@
             state.activeTab = "radicals";
           } else if (act === "customsets") {
             state.activeTab = "customsets";
+          } else if (act === "lookalikes") {
+            state.activeTab = "lookalikes";
           } else if (act === "home") {
             state.activeTab = "home";
           } else if (act === "kanji-folders") {
@@ -7235,6 +7314,104 @@
         }
       });
       updateDrawerCustomSetsSub();
+
+
+      // =========================================================================
+      // LOOK-ALIKE KANJI COMPARISON VIEW (v3.6)
+      // =========================================================================
+      let lookalikeQuery = "";
+
+      window.renderLookalikesView = renderLookalikesView;
+      function renderLookalikesView() {
+        const container = document.getElementById("lookalikesContainer");
+        if (!container) return;
+        const q = lookalikeQuery.trim().toLowerCase();
+        const filtered = LOOKALIKE_GROUPS.filter(grp => {
+          if (!q) return true;
+          const details = grp.chars.map(ch => {
+            const k = KANJI_MAP[ch];
+            return k ? `${ch} ${k.meaning} ${k.on} ${k.kun} ${k.level}` : ch;
+          }).join(" ");
+          return `${details} ${grp.tip}`.toLowerCase().includes(q);
+        });
+
+        const subEl = document.getElementById("lookalikesSubText");
+        if (subEl) subEl.textContent = `${filtered.length} Confusing Kanji Groups · Built-in`;
+
+        container.innerHTML = "";
+        if (!filtered.length) {
+          container.innerHTML = `<div class="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">No look-alike pairs match "${lookalikeQuery}".</div>`;
+          return;
+        }
+
+        filtered.forEach(grp => {
+          const validChars = grp.chars.filter(ch => !!KANJI_MAP[ch]);
+          const card = document.createElement("div");
+          card.className = "bg-white rounded-3xl border border-slate-200 p-4 shadow-sm space-y-3";
+
+          const colsCls = grp.chars.length === 2 ? "grid-cols-2" : (grp.chars.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4");
+          const tilesHtml = grp.chars.map(ch => {
+            const k = KANJI_MAP[ch];
+            const meaning = k ? k.meaning.split(",")[0] : "";
+            const reading = k ? (k.on !== "—" ? k.on.split("(")[0].split(",")[0].trim() : k.kun.split("(")[0].split(",")[0].trim()) : "";
+            return `
+              <button data-la-open="${ch}" class="flex flex-col items-center p-2.5 rounded-2xl bg-slate-50 hover:bg-sky-50 border border-slate-200 hover:border-sky-300 transition text-center">
+                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 mb-1">${k ? k.level : "Kanji"}</span>
+                <span class="kanji-font text-3xl sm:text-4xl font-black text-slate-900 leading-none my-1">${ch}</span>
+                <span class="text-xs font-bold text-slate-800 capitalize line-clamp-1 mt-1">${meaning}</span>
+                <span class="text-[10px] text-slate-500 line-clamp-1">${reading}</span>
+              </button>
+            `;
+          }).join("");
+
+          card.innerHTML = `
+            <div class="grid ${colsCls} gap-2">${tilesHtml}</div>
+            <div class="flex items-start justify-between gap-2 pt-1 border-t border-slate-100">
+              <p class="text-xs text-slate-600 leading-relaxed flex-1"><span class="font-bold text-sky-600">💡 Tip:</span> ${grp.tip}</p>
+              ${validChars.length >= 2 ? `<button class="la-practice-btn px-2.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-[11px] font-bold text-sky-700 shrink-0 transition">Practice →</button>` : ""}
+            </div>
+          `;
+
+          card.querySelectorAll("[data-la-open]").forEach(b => {
+            b.addEventListener("click", () => {
+              const ch = b.dataset.laOpen;
+              if (KANJI_MAP[ch]) {
+                state.detailReturnMode = "browse";
+                openKanjiModal(ch);
+              }
+            });
+          });
+          const pracBtn = card.querySelector(".la-practice-btn");
+          if (pracBtn) {
+            pracBtn.addEventListener("click", () => {
+              openStudyPicker(`Look-Alikes: ${validChars.join(" vs ")}`, validChars, null);
+            });
+          }
+          container.appendChild(card);
+        });
+      }
+
+      document.getElementById("lookalikesDrawerBtn").addEventListener("click", openLeftDrawer);
+      document.getElementById("lookalikesBackHomeBtn").addEventListener("click", () => {
+        pushUserNav();
+        state.activeTab = "home";
+        state.activeMode = "browse";
+        saveState();
+        renderActiveView();
+      });
+      const laSearchInp = document.getElementById("lookalikeSearchInput");
+      const laClearBtn = document.getElementById("lookalikeClearSearchBtn");
+      laSearchInp.addEventListener("input", () => {
+        lookalikeQuery = laSearchInp.value;
+        laClearBtn.classList.toggle("hidden", !lookalikeQuery);
+        renderLookalikesView();
+      });
+      laClearBtn.addEventListener("click", () => {
+        laSearchInp.value = "";
+        lookalikeQuery = "";
+        laClearBtn.classList.add("hidden");
+        renderLookalikesView();
+      });
 
       // Initial render
       renderGlobalProgress();
