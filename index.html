@@ -4512,7 +4512,7 @@
       renderModeTabs();
       if (state.activeMode === "browse") {
         if (state.activeTab === "home") renderHomePage();
-        else if (state.activeTab === "radicals") renderRadicalsView();
+        else if (state.activeTab === "radicals" && typeof window.renderRadicalsView === "function") window.renderRadicalsView();
         else if (state.activeTab === "kanji" && !state.activeKanjiLevel) renderKanjiFolders();
         else renderBrowse();
       } else if (state.activeMode === "setview") {
@@ -6131,17 +6131,19 @@
       document.getElementById("exitYesBtn").addEventListener("click", () => {
         exitModal.classList.add("hidden");
         ksAllowExit = true;
-        const stepsBack = Math.max(1, ksCurrentIdx + 1);
         try { window.close(); } catch (e) {}
-        try { history.go(-stepsBack); } catch (e) {}
-        // If running in a fresh browser tab with no prior history and window.close() is blocked by Chrome,
-        // recover gracefully after a brief delay.
+        if (ksCurrentIdx > 0) {
+          try { history.go(-ksCurrentIdx); } catch (e) {}
+        } else {
+          try { history.back(); } catch (e) {}
+        }
+        // In Android standalone PWA, Chrome blocks JS window.close().
+        // Keep ksAllowExit = true so one native Back press exits immediately without re-trapping.
         setTimeout(() => {
           if (!document.hidden) {
-            ksAllowExit = false;
-            showToast("Press Back again or close tab to exit.");
+            showToast("Ab ek baar Back dabao — app band ho jayega.");
           }
-        }, 450);
+        }, 350);
       });
 
       function handleStepBack() {
@@ -6376,6 +6378,7 @@
         openRadicalModal((radActiveIndex + 1) % radFilteredList.length);
       });
 
+      window.renderRadicalsView = renderRadicalsView;
       function renderRadicalsView() {
         const impTotal = RADICALS_DATA.filter(r => r[6] === 1).length;
         document.getElementById("radImpCount").textContent = impTotal;
